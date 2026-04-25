@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Target Mesir - Pro</title>
+    <link rel="icon" href="logo.png">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        /* Efek Neon & Animasi */
+        @keyframes rotate { 100% { transform: rotate(360deg); } }
+        
+        .neon-border-wrapper {
+            position: relative;
+            overflow: hidden;
+            border-radius: 0.75rem;
+            padding: 2px;
+        }
+        .neon-border-wrapper::before {
+            content: '';
+            position: absolute;
+            z-index: 1;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: conic-gradient(transparent, transparent, #3b82f6, transparent);
+            animation: rotate 3s linear infinite;
+        }
+        .neon-border-content {
+            position: relative;
+            z-index: 2;
+            background: white;
+            border-radius: 0.6rem;
+        }
+        .dark-mode .neon-border-content { background: #1e293b; }
+
+        .neon-text {
+            background: linear-gradient(90deg, #ff00cc, #3333ff, #00ffcc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 10px rgba(255, 0, 204, 0.5), 0 0 20px rgba(51, 51, 255, 0.5);
+        }
+
+        .task-glow { box-shadow: 0 0 10px #3b82f6; border-color: #3b82f6; }
+
+        .cursor { border-right: 2px solid #333; animation: blink 0.75s step-end infinite; }
+        @keyframes blink { from, to { border-color: transparent } 50% { border-color: #333; } }
+
+        /* Dark Mode Global */
+        .dark-mode { background-color: #0f172a; color: white; }
+        .dark-mode .card { background-color: #1e293b; }
+        .dark-mode input, .dark-mode select { background-color: #334155; color: white; border: none; }
+        .active-tab { background-color: #2563eb !important; color: white !important; }
+        .dark-mode #greeting-modal { background-color: rgba(0, 0, 0, 0.8); }
+        .dark-mode #greeting-card { background-color: #1e293b; color: white; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 transition-colors duration-300">
+    
+    <div id="greeting-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden transition-opacity duration-500 opacity-0">
+        <div id="greeting-card" class="bg-white p-8 rounded-2xl shadow-2xl text-center transform scale-90 transition-transform duration-500">
+            <h1 class="text-4xl font-extrabold text-blue-600 mb-4">🎉 Semangat Alang!</h1>
+            <p class="text-lg text-slate-600 mb-6">Ayo cetak progres hari ini untuk mimpi ke Mesir!</p>
+            <button onclick="closeGreeting()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-semibold">Siap!</button>
+        </div>
+    </div>
+
+    <div id="main-content" class="max-w-md mx-auto bg-white rounded-2xl shadow-lg p-6 card transition-colors duration-300 filter blur-sm">
+        <div class="flex justify-between items-center mb-6">
+            <h1 id="typewriter" class="text-xl font-bold cursor"></h1>
+            <button onclick="toggleDarkMode()" class="text-sm bg-slate-200 dark:bg-slate-700 px-3 py-1 rounded-full">⚡</button>
+        </div>
+
+        <div id="dayTabs" class="flex overflow-x-auto gap-2 pb-4 mb-4 border-b scrollbar-hide"></div>
+
+        <div class="neon-border-wrapper mb-4">
+            <div class="neon-border-content p-1 flex flex-col gap-2">
+                <input type="text" id="taskInput" class="w-full bg-transparent px-4 py-2 outline-none" placeholder="Tugas belajar...">
+                <button onclick="addTask()" class="bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold">Tambah Tugas</button>
+            </div>
+        </div>
+
+        <p id="limitInfo" class="text-xs text-slate-500 mb-4 text-center"></p>
+        <ul id="taskList" class="space-y-3"></ul>
+    </div>
+
+    <script>
+        // --- Inisialisasi Data ---
+        const days = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
+        let activeDay = "Senin";
+        let tasksData = JSON.parse(localStorage.getItem('weeklyTasks')) || {};
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderTabs();
+            renderTasks();
+            checkTheme();
+            showGreeting();
+            type();
+        });
+
+        // --- Fitur Sapaan ---
+        function showGreeting() {
+            const modal = document.getElementById('greeting-modal');
+            const card = document.getElementById('greeting-card');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.add('opacity-100');
+                card.classList.add('scale-100');
+            }, 10);
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+        }
+
+        function closeGreeting() {
+            document.getElementById('greeting-modal').classList.add('hidden');
+            document.getElementById('main-content').classList.remove('blur-sm');
+        }
+
+        // --- Animasi Title (Typewriter) ---
+        const textElement = document.getElementById('typewriter');
+        const text = "Manahilul Pro - Target Mesir!";
+        let i = 0; let isDeleting = false;
+        function type() {
+            textElement.innerText = isDeleting ? text.substring(0, i - 1) : text.substring(0, i + 1);
+            i = isDeleting ? i - 1 : i + 1;
+            if (!isDeleting && i === text.length) setTimeout(() => isDeleting = true, 2000);
+            else if (isDeleting && i === 0) isDeleting = false;
+            setTimeout(type, isDeleting ? 100 : 200);
+        }
+
+        // --- Auto Capitalize Input ---
+        document.getElementById('taskInput').addEventListener('input', function(e) {
+            if (this.value.length > 0) {
+                this.value = this.value.charAt(0).toUpperCase() + this.value.slice(1);
+            }
+        });
+
+        // --- Logic Aplikasi ---
+        function renderTabs() {
+            const tabContainer = document.getElementById('dayTabs');
+            tabContainer.innerHTML = '';
+            days.forEach(day => {
+                const btn = document.createElement('button');
+                btn.className = `px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ${activeDay === day ? 'active-tab bg-blue-600 text-white' : 'bg-slate-200'}`;
+                btn.innerText = day;
+                btn.onclick = () => { activeDay = day; renderTabs(); renderTasks(); };
+                tabContainer.appendChild(btn);
+            });
+        }
+
+        function addTask() {
+            const input = document.getElementById('taskInput');
+            const text = input.value.trim();
+            if (!text) return;
+            if (!tasksData[activeDay]) tasksData[activeDay] = [];
+            if (tasksData[activeDay].length >= 7) { alert("Maksimal 7 tugas per hari agar tetap fokus!"); return; }
+            
+            tasksData[activeDay].push({ text, completed: false });
+            localStorage.setItem('weeklyTasks', JSON.stringify(tasksData));
+            input.value = '';
+            renderTasks();
+        }
+
+        function toggleTask(index) {
+            tasksData[activeDay][index].completed = !tasksData[activeDay][index].completed;
+            localStorage.setItem('weeklyTasks', JSON.stringify(tasksData));
+            renderTasks();
+        }
+
+        function deleteTask(index) {
+            tasksData[activeDay].splice(index, 1);
+            localStorage.setItem('weeklyTasks', JSON.stringify(tasksData));
+            renderTasks();
+        }
+
+        function renderTasks() {
+            const list = document.getElementById('taskList');
+            const limitInfo = document.getElementById('limitInfo');
+            list.innerHTML = '';
+            const currentTasks = tasksData[activeDay] || [];
+            limitInfo.innerText = `Tugas hari ${activeDay}: ${currentTasks.length} / 7`;
+
+            currentTasks.forEach((task, index) => {
+                const li = document.createElement('li');
+                li.className = `flex justify-between items-center p-3 rounded-lg border transition-all ${task.completed ? 'task-glow' : 'border-slate-200'}`;
+                li.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${index})" class="w-5 h-5 cursor-pointer">
+                        <p class="${task.completed ? 'line-through text-slate-400' : ''}">${task.text}</p>
+                    </div>
+                    <button onclick="deleteTask(${index})" class="text-red-400 font-bold hover:text-red-600">✕</button>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        // --- Tema ---
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        }
+
+        function checkTheme() {
+            if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
+        }
+
+        // Di dalam fungsi toggleTask (saat tugas dicentang)
+        function toggleTask(index) {
+             tasksData[activeDay][index].completed = !tasksData[activeDay][index].completed;
+    
+         // Mainkan suara jika tugas diselesaikan
+         if (tasksData[activeDay][index].completed) {
+         const audio = new Audio('suara-selesai.mp3'); // Pastikan nama file sesuai
+         audio.play();
+         }
+    
+         localStorage.setItem('weeklyTasks', JSON.stringify(tasksData));
+         renderTasks();
+        }
+
+    </script>
+</body>
+</html>

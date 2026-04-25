@@ -1,0 +1,11 @@
+{
+  "name": "Target Mesir - Pro",
+  "short_name": "EgyptApp",
+  "start_url": "index.html",
+  "display": "standalone",
+  "icons": [{
+    "src": "logo.png",
+    "sizes": "192x192",
+    "type": "image/png"
+  }]
+}
